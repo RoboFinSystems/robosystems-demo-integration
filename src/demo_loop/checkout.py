@@ -42,8 +42,10 @@ def ensure_checkout(cfg: DemoConfig) -> None:
     if src.exists() and not dst.exists():
       dst.write_text(src.read_text())
 
-  print("Syncing checkout environment (uv sync) ...")
-  _run(["uv", "sync", "--quiet"], cwd=str(checkout))
+  # --all-extras: the examples' SDK (robosystems-client) lives in the
+  # upstream repo's dev extra, not its default dependencies.
+  print("Syncing checkout environment (uv sync --all-extras) ...")
+  _run(["uv", "sync", "--quiet", "--all-extras"], cwd=str(checkout))
 
 
 def write_credentials(cfg: DemoConfig, slots: dict[str, str]) -> None:
