@@ -71,6 +71,10 @@ EPISODES: dict[str, Episode] = {
     slot="coffee_roaster",
     schema_extensions=["roboledger"],
     metadata_snippet=_SCENARIO_SNIPPET.format(pkg="coffee_roaster_demo"),
+    # Skip the post-filing serialization pass (bundles + SHACL/Arelle):
+    # loop-run output files are dead weight — export from the report UI.
+    # Harmlessly ignored by checkouts predating the flag.
+    extra_args=["--no-artifacts"],
   ),
   "saas-startup": Episode(
     key="saas-startup",
@@ -78,6 +82,7 @@ EPISODES: dict[str, Episode] = {
     slot="saas_startup",
     schema_extensions=["roboledger"],
     metadata_snippet=_SCENARIO_SNIPPET.format(pkg="saas_startup_demo"),
+    extra_args=["--no-artifacts"],
   ),
   "roboinvestor": Episode(
     key="roboinvestor",
