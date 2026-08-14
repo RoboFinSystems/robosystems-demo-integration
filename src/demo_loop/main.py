@@ -50,7 +50,7 @@ def _ensure_graph(cfg: DemoConfig, state: dict[str, Any], episode: Episode) -> s
   return graph_id
 
 
-def cmd_up(cfg: DemoConfig, episode_key: str) -> None:
+def cmd_up(cfg: DemoConfig, episode_key: str, mint_connector: bool = True) -> None:
   episode = get_episode(episode_key)
   checkout.ensure_checkout(cfg)
   checkout.write_credentials(cfg, {})
@@ -62,7 +62,7 @@ def cmd_up(cfg: DemoConfig, episode_key: str) -> None:
     issuer_record = state["episodes"].get(issuer.key) or {}
     if not issuer_record.get("loaded"):
       print(f"\n=== Issuer prerequisite: {issuer.key} ===")
-      cmd_up(cfg, issuer.key)
+      cmd_up(cfg, issuer.key, mint_connector=mint_connector)
       state = _load_state(cfg)
     issuer_args = ["--issuer", state["episodes"][issuer.key]["graph_id"]]
 
@@ -78,7 +78,7 @@ def cmd_up(cfg: DemoConfig, episode_key: str) -> None:
     record["loaded"] = True
     _save_state(cfg, state)
 
-  if not record.get("connector_url"):
+  if mint_connector and not record.get("connector_url"):
     key_id, connector_url = api.mint_connector_key(
       cfg, graph_id, f"demo-{episode.key}-connector"
     )
@@ -89,9 +89,14 @@ def cmd_up(cfg: DemoConfig, episode_key: str) -> None:
   print("\n" + "=" * 72)
   print(f"  Episode:       {episode.key}")
   print(f"  Graph:         {graph_id}")
-  print(f"  Connector URL: {record['connector_url']}")
-  print("  Paste the connector URL into Claude (Settings → Connectors) and")
-  print("  ask about the books. Tear down with: just demo-down " + episode.key)
+  if record.get("connector_url"):
+    print(f"  Connector URL: {record['connector_url']}")
+    print("  Paste the connector URL into Claude (Settings → Connectors) and")
+    print("  ask about the books.")
+  else:
+    print("  Connector:     not minted (--no-connector) — generate one from")
+    print("  the app's Connect page when you need it.")
+  print("  Tear down with: just demo-down " + episode.key)
   print("=" * 72)
 
 
@@ -104,6 +109,12 @@ def cmd_down(cfg: DemoConfig, target: str) -> None:
   else:
     matches = [k for k, v in state["episodes"].items() if v.get("graph_id") == target]
     if not matches:
+      if target.startswith("kg"):
+        # A graph id this runner never provisioned (e.g. a CI run's
+        # tenant, torn down later from anywhere) — stateless teardown.
+        print(f"Tearing down {target} (not in local state) ...")
+        api.delete_graph(cfg, target)
+        return
       raise SystemExit(f"Nothing in demo state matches {target!r}")
     keys = matches
 
@@ -142,6 +153,12 @@ def main() -> None:
 
   up = sub.add_parser("up", help="Provision + load an episode, print the connector URL")
   up.add_argument("episode", choices=sorted(EPISODES))
+  up.add_argument(
+    "--no-connector",
+    action="store_true",
+    help="Skip minting the MCP connector key (CI runs: logs are public; "
+    "mint from the app's Connect page instead)",
+  )
 
   down = sub.add_parser(
     "down", help="Tear down a demo tenant (episode, graph id, or 'all')"
@@ -153,7 +170,7 @@ def main() -> None:
   args = parser.parse_args()
   cfg = load_config()
   if args.command == "up":
-    cmd_up(cfg, args.episode)
+    cmd_up(cfg, args.episode, mint_connector=not args.no_connector)
   elif args.command == "down":
     cmd_down(cfg, args.target)
   else:

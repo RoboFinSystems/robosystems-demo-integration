@@ -1,33 +1,54 @@
-name: Run
+name: Demo
 
-# The default runtime: GitHub Actions as the scheduler + runner. Zero
-# infrastructure — configure the repo secrets/vars below and the
-# integration runs on the cron. Graduate to a larger runner
-# (`runs-on: ubuntu-latest-8-cores`) when a job needs more memory/CPU,
-# and to an ECS scheduled task when you want full resource control.
+# Push-button demo tenants. Dispatch `up` with an episode to provision a
+# fresh graph on the invoice-billed demo org and load the showcase story;
+# dispatch `down` with the run's graph id to tear it down.
 #
 # Configuration (Settings → Secrets and variables → Actions):
-#   secrets.ROBOSYSTEMS_API_KEY       — API key for the target graph
-#   vars.ROBOSYSTEMS_GRAPH_ID        — graph to write to (kg...)
-#   vars.INTEGRATION_SOURCE_NAME     — registered source name
-#   vars.ROBOSYSTEMS_API_URL         — optional; defaults to the managed cloud
+#   secrets.ROBOSYSTEMS_API_KEY  — the demo account's API key (required)
+#   vars.ROBOSYSTEMS_API_URL     — optional; defaults to the managed cloud
+#   vars.ROBOSYSTEMS_REF         — optional; git ref of the robosystems
+#                                  repo the episodes run from
 #
-# Notes: GitHub pauses cron workflows in public repos after 60 days
-# without activity, and skews schedule start times — don't depend on
-# minute-level precision.
+# This repo is public, so run logs are world-readable. The workflow
+# therefore never mints the MCP connector key (--no-connector): the graph
+# id it prints is harmless without a key — generate the connector URL
+# from the app's Connect page when the demo needs one.
 
 on:
-  schedule:
-    - cron: '17 5 * * *' # daily ~05:17 UTC — align to your source's cadence
   workflow_dispatch:
+    inputs:
+      action:
+        description: What to do
+        type: choice
+        options: [up, down]
+        default: up
+      episode:
+        description: Episode to load (for `up`)
+        type: choice
+        options: [coffee-roaster, saas-startup, roboinvestor]
+        default: coffee-roaster
+      graph_id:
+        description: Graph id to tear down (for `down`, kg...)
+        type: string
+        required: false
+
+concurrency: demo-loop
 
 jobs:
-  run:
-    # No-op until the repo is configured (keeps the template itself quiet).
-    if: vars.ROBOSYSTEMS_GRAPH_ID != ''
+  demo:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
+      - name: Require configuration
+        env:
+          KEY: ${{ secrets.ROBOSYSTEMS_API_KEY }}
+        run: |
+          if [ -z "$KEY" ]; then
+            echo "::error::secrets.ROBOSYSTEMS_API_KEY is not set — the demo loop cannot run."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v7
 
@@ -42,10 +63,40 @@ jobs:
       - name: Install dependencies
         run: uv sync
 
-      - name: Run integration
+      - name: Demo up
+        if: ${{ inputs.action == 'up' }}
         env:
           ROBOSYSTEMS_API_URL: ${{ vars.ROBOSYSTEMS_API_URL || 'https://api.robosystems.ai' }}
           ROBOSYSTEMS_API_KEY: ${{ secrets.ROBOSYSTEMS_API_KEY }}
-          ROBOSYSTEMS_GRAPH_ID: ${{ vars.ROBOSYSTEMS_GRAPH_ID }}
-          INTEGRATION_SOURCE_NAME: ${{ vars.INTEGRATION_SOURCE_NAME }}
-        run: uv run python -m integration.main
+          ROBOSYSTEMS_REF: ${{ vars.ROBOSYSTEMS_REF || 'main' }}
+          EPISODE: ${{ inputs.episode }}
+        run: |
+          uv run python -m demo_loop.main up "$EPISODE" --no-connector
+          {
+            echo "## Demo tenant up"
+            echo ""
+            echo "| Episode | Graph |"
+            echo "|---|---|"
+            uv run python - <<'EOF'
+          import json, pathlib
+          state = json.loads(pathlib.Path(".local/demo-state.json").read_text())
+          for key, rec in state["episodes"].items():
+              print(f"| {key} | `{rec['graph_id']}` |")
+          EOF
+            echo ""
+            echo "Mint the MCP connector from the app's Connect page. Tear down by dispatching this workflow with action=down and the graph id."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Demo down
+        if: ${{ inputs.action == 'down' }}
+        env:
+          ROBOSYSTEMS_API_URL: ${{ vars.ROBOSYSTEMS_API_URL || 'https://api.robosystems.ai' }}
+          ROBOSYSTEMS_API_KEY: ${{ secrets.ROBOSYSTEMS_API_KEY }}
+          GRAPH_ID: ${{ inputs.graph_id }}
+        run: |
+          if [ -z "$GRAPH_ID" ]; then
+            echo "::error::graph_id input is required for action=down"
+            exit 1
+          fi
+          uv run python -m demo_loop.main down "$GRAPH_ID"
+          echo "Teardown accepted for \`$GRAPH_ID\` (deprovisions server-side in ~10 min)." >> "$GITHUB_STEP_SUMMARY"
