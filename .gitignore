@@ -1,0 +1,15 @@
+# Environments / secrets
+.env
+.venv/
+
+# Raw pull history (keep in your own storage, not the repo)
+data/
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/

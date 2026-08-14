@@ -1,0 +1,106 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Setup Environment",
+      "type": "shell",
+      "command": "just venv",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "just install",
+      "problemMatcher": []
+    },
+    {
+      "label": "Update Dependencies",
+      "type": "shell",
+      "command": "just update",
+      "problemMatcher": []
+    },
+    {
+      "label": "Run Integration",
+      "type": "shell",
+      "command": "just run",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test",
+      "type": "shell",
+      "command": "just test",
+      "problemMatcher": []
+    },
+    {
+      "label": "Test All",
+      "type": "shell",
+      "command": "just test-all",
+      "problemMatcher": []
+    },
+    {
+      "label": "Lint",
+      "type": "shell",
+      "command": "just lint",
+      "problemMatcher": []
+    },
+    {
+      "label": "Format",
+      "type": "shell",
+      "command": "just format",
+      "problemMatcher": []
+    },
+    {
+      "label": "Type Check",
+      "type": "shell",
+      "command": "just typecheck",
+      "problemMatcher": []
+    },
+    {
+      "label": "Clean",
+      "type": "shell",
+      "command": "just clean",
+      "problemMatcher": []
+    },
+    {
+      "label": "Create Feature",
+      "type": "shell",
+      "command": "just create-feature ${input:branchType} ${input:branchName} ${input:baseBranch} ${input:updateDependencies}",
+      "problemMatcher": []
+    },
+    {
+      "label": "Claude Code",
+      "type": "shell",
+      "command": "claude",
+      "args": [],
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "branchType",
+      "type": "pickString",
+      "description": "Choose branch type:",
+      "default": "feature",
+      "options": ["feature", "bugfix", "hotfix", "chore", "refactor"]
+    },
+    {
+      "id": "branchName",
+      "type": "promptString",
+      "description": "Enter branch name (will be prefixed with type/):",
+      "default": ""
+    },
+    {
+      "id": "baseBranch",
+      "type": "promptString",
+      "description": "Enter base branch (default: main):",
+      "default": "main"
+    },
+    {
+      "id": "updateDependencies",
+      "type": "pickString",
+      "description": "Update dependencies after creating branch:",
+      "default": "no",
+      "options": ["yes", "no"]
+    }
+  ]
+}
