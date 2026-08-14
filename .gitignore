@@ -2,6 +2,10 @@
 .env
 .venv/
 
+# Demo loop working state (robosystems checkout cache + tenant state)
+.robosystems/
+.local/
+
 # Raw pull history (keep in your own storage, not the repo)
 data/
 

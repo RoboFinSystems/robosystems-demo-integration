@@ -32,6 +32,18 @@ update:
 run:
     uv run python -m integration.main
 
+# Provision + load a demo episode, print its MCP connector URL
+demo-up episode="coffee-roaster":
+    uv run python -m demo_loop.main up {{episode}}
+
+# Tear down a demo tenant (episode name, graph id, or "all")
+demo-down target="all":
+    uv run python -m demo_loop.main down {{target}}
+
+# Show which demo tenants the loop currently holds
+demo-status:
+    uv run python -m demo_loop.main status
+
 # Run tests
 test:
     uv run pytest

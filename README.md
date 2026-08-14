@@ -1,6 +1,21 @@
-# RoboSystems Integration Template
+# RoboSystems Demo Integration
 
-A scaffold for building custom integrations against the [RoboSystems](https://github.com/RoboFinSystems/robosystems) public API.
+The demo tenant loop, built on the [integration template](https://github.com/RoboFinSystems/robosystems-integration-template): provision a throwaway company on a deployed RoboSystems environment, load a showcase episode from the public repo's `examples/`, hand back an MCP connector URL for Claude, and tear the whole thing down when the demo ends.
+
+```bash
+just demo-up coffee-roaster    # provision + load Driftline + connector URL
+just demo-up saas-startup      # Cadence Labs
+just demo-up roboinvestor      # Meridian fund + cross-graph handshake (loads Cadence first)
+just demo-status               # what the loop currently holds
+just demo-down coffee-roaster  # tear one tenant down (~10 min server-side)
+just demo-down all             # tear everything down
+```
+
+Configuration is `.env`: `ROBOSYSTEMS_API_KEY` must belong to the **invoice-billed demo account** — that is what lets `POST /v1/graphs` provision with no Stripe round-trip — and `ROBOSYSTEMS_REF` pins which ref of the public robosystems repo the episodes run from (cloned into `.robosystems/`, a tool-owned cache). Loop state lives in `.local/demo-state.json`. Every step is ordinary API traffic; the loop holds no database access of any kind.
+
+---
+
+The template scaffold this repo was cut from is documented below.
 
 **Living example**: [`robosystems-marketing-integration`](https://github.com/RoboFinSystems/robosystems-marketing-integration) — a real integration built from this template that collects RFS's own marketing/usage metrics (GitHub, npm, PyPI, Docker Hub) and asserts them as a monthly metric series.
 
