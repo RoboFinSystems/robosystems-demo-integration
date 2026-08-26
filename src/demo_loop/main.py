@@ -1,6 +1,6 @@
 """The demo loop CLI.
 
-    just demo-up coffee-roaster     # provision + load + connector URL
+    just demo-up coffee-roaster     # provision + load; prints the MCP URL
     just demo-down coffee-roaster   # tear that tenant down
     just demo-down all              # tear everything down
     just demo-status                # what the loop currently holds
@@ -50,7 +50,7 @@ def _ensure_graph(cfg: DemoConfig, state: dict[str, Any], episode: Episode) -> s
   return graph_id
 
 
-def cmd_up(cfg: DemoConfig, episode_key: str, mint_connector: bool = True) -> None:
+def cmd_up(cfg: DemoConfig, episode_key: str, mint_key: bool = False) -> None:
   episode = get_episode(episode_key)
   checkout.ensure_checkout(cfg)
   checkout.write_credentials(cfg, {})
@@ -62,7 +62,7 @@ def cmd_up(cfg: DemoConfig, episode_key: str, mint_connector: bool = True) -> No
     issuer_record = state["episodes"].get(issuer.key) or {}
     if not issuer_record.get("loaded"):
       print(f"\n=== Issuer prerequisite: {issuer.key} ===")
-      cmd_up(cfg, issuer.key, mint_connector=mint_connector)
+      cmd_up(cfg, issuer.key, mint_key=mint_key)
       state = _load_state(cfg)
     issuer_args = ["--issuer", state["episodes"][issuer.key]["graph_id"]]
 
@@ -78,24 +78,30 @@ def cmd_up(cfg: DemoConfig, episode_key: str, mint_connector: bool = True) -> No
     record["loaded"] = True
     _save_state(cfg, state)
 
-  if mint_connector and not record.get("connector_url"):
-    key_id, connector_url = api.mint_connector_key(
-      cfg, graph_id, f"demo-{episode.key}-connector"
-    )
+  record["mcp_url"] = api.mcp_url(cfg, graph_id)
+  # Legacy field from the retired ?token= connector URL; the key it carried
+  # is still revoked on teardown through connector_key_id.
+  record.pop("connector_url", None)
+  if mint_key and not record.get("connector_key"):
+    key_id, key = api.mint_connector_key(cfg, graph_id, f"demo-{episode.key}-connector")
     record["connector_key_id"] = key_id
-    record["connector_url"] = connector_url
-    _save_state(cfg, state)
+    record["connector_key"] = key
+  _save_state(cfg, state)
 
   print("\n" + "=" * 72)
   print(f"  Episode:       {episode.key}")
   print(f"  Graph:         {graph_id}")
-  if record.get("connector_url"):
-    print(f"  Connector URL: {record['connector_url']}")
-    print("  Paste the connector URL into Claude (Settings → Connectors) and")
-    print("  ask about the books.")
+  print(f"  MCP URL:       {record['mcp_url']}")
+  print("  Add it in Claude (Settings → Connectors → Add custom connector) or")
+  print("  Claude Code (claude mcp add --transport http demo <url>), sign in as")
+  print("  the demo account, and ask about the books. The graph is preselected.")
+  if record.get("connector_key"):
+    print(f"  API key:       {record['connector_key']}")
+    print("  For clients that can't sign in: send it as the X-API-Key header.")
+    print("  Scoped to this graph; revoked on teardown. Never put it in a URL.")
   else:
-    print("  Connector:     not minted (--no-connector) — generate one from")
-    print("  the app's Connect page when you need it.")
+    print("  API key:       not minted — pass --connector-key for header-only")
+    print("  clients (CI logs are public; the default leaves no key behind).")
   print("  Tear down with: just demo-down " + episode.key)
   print("=" * 72)
 
@@ -142,7 +148,7 @@ def cmd_status(cfg: DemoConfig) -> None:
     return
   for key, record in state["episodes"].items():
     print(f"{key}:")
-    for field in ("graph_id", "provisioned_at", "loaded", "connector_url"):
+    for field in ("graph_id", "provisioned_at", "loaded", "mcp_url", "connector_key"):
       if record.get(field) is not None:
         print(f"  {field}: {record[field]}")
 
@@ -151,14 +157,16 @@ def main() -> None:
   parser = argparse.ArgumentParser(prog="demo-loop", description=__doc__)
   sub = parser.add_subparsers(dest="command", required=True)
 
-  up = sub.add_parser("up", help="Provision + load an episode, print the connector URL")
+  up = sub.add_parser("up", help="Provision + load an episode, print the MCP URL")
   up.add_argument("episode", choices=sorted(EPISODES))
   up.add_argument(
-    "--no-connector",
+    "--connector-key",
     action="store_true",
-    help="Skip minting the MCP connector key (CI runs: logs are public; "
-    "mint from the app's Connect page instead)",
+    help="Also mint a graph-scoped API key for clients that cannot sign in "
+    "(sent as X-API-Key; off by default so CI logs never carry a credential)",
   )
+  # Retired: not minting is now the default. Accepted so old invocations keep working.
+  up.add_argument("--no-connector", action="store_true", help=argparse.SUPPRESS)
 
   down = sub.add_parser(
     "down", help="Tear down a demo tenant (episode, graph id, or 'all')"
@@ -170,7 +178,7 @@ def main() -> None:
   args = parser.parse_args()
   cfg = load_config()
   if args.command == "up":
-    cmd_up(cfg, args.episode, mint_connector=not args.no_connector)
+    cmd_up(cfg, args.episode, mint_key=args.connector_key)
   elif args.command == "down":
     cmd_down(cfg, args.target)
   else:
