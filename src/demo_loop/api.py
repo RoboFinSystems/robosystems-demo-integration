@@ -98,12 +98,15 @@ def provision_graph(
 
 
 def mint_connector_key(cfg: DemoConfig, graph_id: str, name: str) -> tuple[str, str]:
-  """Mint a graph-scoped (rfsc) key and return (key_id, connector_url).
+  """Mint a graph-scoped (rfsc) key and return (key_id, key).
+
+  The key goes in an ``X-API-Key`` header for clients that cannot sign in;
+  it never rides in a URL (the ``?token=`` connector URL was the bridge to
+  OAuth and the API no longer honors it).
 
   The SDK's CreateAPIKeyRequest predates graph scoping, so this posts
   directly — the documented escape hatch for operations newer than the
-  SDK regen. Only a graph-scoped key is honored in a connector URL; the
-  account key never travels in a URL.
+  SDK regen.
   """
   response = httpx.post(
     f"{cfg.api_url}/v1/user/api-keys",
@@ -120,10 +123,12 @@ def mint_connector_key(cfg: DemoConfig, graph_id: str, name: str) -> tuple[str, 
       f"Connector key mint failed: HTTP {response.status_code}\n{response.text}"
     )
   payload = response.json()
-  key = payload["key"]
-  key_id = payload["api_key"]["id"]
-  connector_url = f"{cfg.api_url}/v1/graphs/{graph_id}/mcp?token={key}"
-  return key_id, connector_url
+  return payload["api_key"]["id"], payload["key"]
+
+
+def mcp_url(cfg: DemoConfig, graph_id: str) -> str:
+  """The per-graph MCP endpoint — OAuth-capable clients add it and sign in."""
+  return f"{cfg.api_url}/v1/graphs/{graph_id}/mcp"
 
 
 def revoke_key(cfg: DemoConfig, key_id: str) -> None:
