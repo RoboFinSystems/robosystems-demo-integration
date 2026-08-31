@@ -10,10 +10,11 @@ name: Demo
 #   vars.ROBOSYSTEMS_REF         — optional; git ref of the robosystems
 #                                  repo the episodes run from
 #
-# This repo is public, so run logs are world-readable. The workflow
-# therefore never mints the MCP connector key (--no-connector): the graph
-# id it prints is harmless without a key — generate the connector URL
-# from the app's Connect page when the demo needs one.
+# Connecting is OAuth, so the run needs to hand over nothing secret: the
+# summary prints the graph's MCP URL, which a client adds and then signs
+# in against as the demo account. This repo is public and run logs are
+# world-readable, so the workflow never mints a header key — run
+# `demo-up <episode> --connector-key` locally if a viewer needs one.
 
 on:
   workflow_dispatch:
@@ -71,20 +72,20 @@ jobs:
           ROBOSYSTEMS_REF: ${{ vars.ROBOSYSTEMS_REF || 'main' }}
           EPISODE: ${{ inputs.episode }}
         run: |
-          uv run python -m demo_loop.main up "$EPISODE" --no-connector
+          uv run python -m demo_loop.main up "$EPISODE"
           {
             echo "## Demo tenant up"
             echo ""
-            echo "| Episode | Graph |"
-            echo "|---|---|"
+            echo "| Episode | Graph | MCP URL |"
+            echo "|---|---|---|"
             uv run python - <<'EOF'
           import json, pathlib
           state = json.loads(pathlib.Path(".local/demo-state.json").read_text())
           for key, rec in state["episodes"].items():
-              print(f"| {key} | `{rec['graph_id']}` |")
+              print(f"| {key} | `{rec['graph_id']}` | `{rec['mcp_url']}` |")
           EOF
             echo ""
-            echo "Mint the MCP connector from the app's Connect page. Tear down by dispatching this workflow with action=down and the graph id."
+            echo "Add the MCP URL in Claude (Settings -> Connectors -> Add custom connector) or Claude Code (\`claude mcp add --transport http demo <url>\`) and sign in as the demo account — consent names this graph. Tear down by dispatching this workflow with action=down and the graph id."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Demo down

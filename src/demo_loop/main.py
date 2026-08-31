@@ -5,9 +5,14 @@
     just demo-down all              # tear everything down
     just demo-status                # what the loop currently holds
 
-State (which graphs the loop provisioned, which connector keys it
-minted) lives in `.local/demo-state.json` — local, git-ignored, and only
-ever describing throwaway tenants.
+Connecting is OAuth: the printed URL is the whole handoff, and whoever
+adds it signs in as the demo account. `--connector-key` mints a
+graph-scoped header key for a viewer who cannot sign in — off by default,
+revoked on teardown.
+
+State (which graphs the loop provisioned, which header keys it minted)
+lives in `.local/demo-state.json` — local, git-ignored, and only ever
+describing throwaway tenants.
 """
 
 from __future__ import annotations
@@ -94,14 +99,16 @@ def cmd_up(cfg: DemoConfig, episode_key: str, mint_key: bool = False) -> None:
   print(f"  MCP URL:       {record['mcp_url']}")
   print("  Add it in Claude (Settings → Connectors → Add custom connector) or")
   print("  Claude Code (claude mcp add --transport http demo <url>), sign in as")
-  print("  the demo account, and ask about the books. The graph is preselected.")
+  print("  the demo account, and ask about the books. Consent names this graph;")
+  print("  no picker, no key to paste. The URL is not a credential.")
   if record.get("connector_key"):
-    print(f"  API key:       {record['connector_key']}")
-    print("  For clients that can't sign in: send it as the X-API-Key header.")
+    print(f"  Header key:    {record['connector_key']}")
+    print("  For a viewer who can't sign in: send it as X-API-Key (Claude's")
+    print('  "Additional request headers", or a Cursor/VS Code mcp.json).')
     print("  Scoped to this graph; revoked on teardown. Never put it in a URL.")
   else:
-    print("  API key:       not minted — pass --connector-key for header-only")
-    print("  clients (CI logs are public; the default leaves no key behind).")
+    print("  Header key:    not minted — pass --connector-key if the viewer")
+    print("  can't sign in (CI logs are public; the default leaves no key).")
   print("  Tear down with: just demo-down " + episode.key)
   print("=" * 72)
 
@@ -162,8 +169,9 @@ def main() -> None:
   up.add_argument(
     "--connector-key",
     action="store_true",
-    help="Also mint a graph-scoped API key for clients that cannot sign in "
-    "(sent as X-API-Key; off by default so CI logs never carry a credential)",
+    help="Also mint a graph-scoped API key for a viewer who cannot sign in "
+    "as the demo account (sent as X-API-Key; off by default, because OAuth "
+    "needs no key and CI logs are public)",
   )
   # Retired: not minting is now the default. Accepted so old invocations keep working.
   up.add_argument("--no-connector", action="store_true", help=argparse.SUPPRESS)
