@@ -12,8 +12,6 @@ from __future__ import annotations
 import time
 from typing import Any
 
-import httpx
-
 from robosystems_client.client import AuthenticatedClient
 
 from .config import DemoConfig
@@ -100,43 +98,50 @@ def provision_graph(
 def mint_connector_key(cfg: DemoConfig, graph_id: str, name: str) -> tuple[str, str]:
   """Mint a graph-scoped (rfsc) key and return (key_id, key).
 
-  The key goes in an ``X-API-Key`` header for clients that cannot sign in;
-  it never rides in a URL (the ``?token=`` connector URL was the bridge to
-  OAuth and the API no longer honors it).
-
-  The SDK's CreateAPIKeyRequest predates graph scoping, so this posts
-  directly — the documented escape hatch for operations newer than the
-  SDK regen.
+  OAuth is the connection path for anyone who can sign in as the demo
+  account; this key is the alternative for a viewer who cannot — Claude's
+  "Additional request headers" field, a Cursor/VS Code ``mcp.json``, a
+  script. It rides in an ``X-API-Key`` header and never in a URL: the
+  ``?token=`` connector URL was the bridge to OAuth and the API no longer
+  honors it.
   """
-  response = httpx.post(
-    f"{cfg.api_url}/v1/user/api-keys",
-    headers={"X-API-Key": cfg.api_key, "Content-Type": "application/json"},
-    json={
-      "name": name,
-      "description": f"MCP connector key for demo graph {graph_id}",
-      "graph_id": graph_id,
-    },
-    timeout=30,
+  from robosystems_client.api.user.create_user_api_key import (
+    sync_detailed as create_user_api_key,
   )
-  if response.status_code >= 400:
-    raise SystemExit(
-      f"Connector key mint failed: HTTP {response.status_code}\n{response.text}"
-    )
-  payload = response.json()
-  return payload["api_key"]["id"], payload["key"]
+  from robosystems_client.models import CreateAPIKeyRequest, CreateAPIKeyResponse
+
+  response = create_user_api_key(
+    client=make_client(cfg),
+    body=CreateAPIKeyRequest(
+      name=name,
+      description=f"MCP header key for demo graph {graph_id}",
+      graph_id=graph_id,
+    ),
+  )
+  parsed = response.parsed
+  if response.status_code >= 400 or not isinstance(parsed, CreateAPIKeyResponse):
+    body = response.content.decode() if response.content else "(no body)"
+    raise SystemExit(f"Connector key mint failed: HTTP {response.status_code}\n{body}")
+  return parsed.api_key.id, parsed.key
 
 
 def mcp_url(cfg: DemoConfig, graph_id: str) -> str:
-  """The per-graph MCP endpoint — OAuth-capable clients add it and sign in."""
+  """The per-graph MCP endpoint — add the URL, sign in, done.
+
+  The graph is pinned by the URL, so the OAuth consent screen names this
+  tenant instead of offering a picker, and the grant is bound to this
+  exact resource. Not a credential: safe to print, paste, and publish in
+  a CI summary.
+  """
   return f"{cfg.api_url}/v1/graphs/{graph_id}/mcp"
 
 
 def revoke_key(cfg: DemoConfig, key_id: str) -> None:
-  response = httpx.delete(
-    f"{cfg.api_url}/v1/user/api-keys/{key_id}",
-    headers={"X-API-Key": cfg.api_key},
-    timeout=30,
+  from robosystems_client.api.user.revoke_user_api_key import (
+    sync_detailed as revoke_user_api_key,
   )
+
+  response = revoke_user_api_key(api_key_id=key_id, client=make_client(cfg))
   if response.status_code >= 400:
     print(f"  WARNING: key {key_id} revocation returned HTTP {response.status_code}")
 

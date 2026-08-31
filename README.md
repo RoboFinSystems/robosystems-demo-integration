@@ -1,9 +1,9 @@
 # RoboSystems Demo Integration
 
-The demo tenant loop, built on the [integration template](https://github.com/RoboFinSystems/robosystems-integration-template): provision a throwaway company on a deployed RoboSystems environment, load a showcase episode from the public repo's `examples/`, hand back an MCP connector URL for Claude, and tear the whole thing down when the demo ends.
+The demo tenant loop, built on the [integration template](https://github.com/RoboFinSystems/robosystems-integration-template): provision a throwaway company on a deployed RoboSystems environment, load a showcase episode from the public repo's `examples/`, hand back the graph's MCP URL for Claude to sign into, and tear the whole thing down when the demo ends.
 
 ```bash
-just demo-up coffee-roaster    # provision + load Driftline + connector URL
+just demo-up coffee-roaster    # provision + load Driftline + MCP URL
 just demo-up saas-startup      # Cadence Labs
 just demo-up roboinvestor      # Meridian fund + cross-graph handshake (loads Cadence first)
 just demo-status               # what the loop currently holds
@@ -12,6 +12,19 @@ just demo-down all             # tear everything down
 ```
 
 Configuration is `.env`: `ROBOSYSTEMS_API_KEY` must belong to the **invoice-billed demo account** — that is what lets `POST /v1/graphs` provision with no Stripe round-trip — and `ROBOSYSTEMS_REF` pins which ref of the public robosystems repo the episodes run from (cloned into `.robosystems/`, a tool-owned cache). Loop state lives in `.local/demo-state.json`. Every step is ordinary API traffic; the loop holds no database access of any kind.
+
+### Connecting the demo to Claude
+
+`demo-up` prints the tenant's per-graph MCP URL — `…/v1/graphs/{graph_id}/mcp`. That URL **is** the handoff:
+
+1. Claude → Settings → Connectors → Add custom connector (or `claude mcp add --transport http demo <url>`).
+2. Sign in as the demo account. The graph is named by the URL, so consent shows this tenant rather than a picker, and the grant is bound to this one resource.
+
+The URL is not a credential — safe to paste in chat, a run summary, or a slide. The retired `?token=` connector URL *was* a credential; the API stopped honoring it when OAuth landed.
+
+The loop's own `ROBOSYSTEMS_API_KEY` is unrelated to any of this: OAuth covers MCP clients only, while provisioning, loading and teardown are ordinary REST that takes `X-API-Key`. It stays.
+
+For a viewer who **can't** sign in as the demo account, `demo-up <episode> --connector-key` mints a graph-scoped key to send as an `X-API-Key` header (Claude's "Additional request headers" field, or a Cursor/VS Code `mcp.json`). Off by default, printed once, revoked on teardown, and never valid in a URL.
 
 ---
 

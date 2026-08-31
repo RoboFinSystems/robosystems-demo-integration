@@ -32,7 +32,7 @@ update:
 run:
     uv run python -m integration.main
 
-# Provision + load a demo episode, print its MCP connector URL
+# Provision + load a demo episode, print its MCP URL (sign in with OAuth)
 demo-up episode="coffee-roaster":
     uv run python -m demo_loop.main up {{episode}}
 
