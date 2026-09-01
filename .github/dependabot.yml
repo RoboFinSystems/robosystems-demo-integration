@@ -1,5 +1,20 @@
 version: 2
+
 updates:
+  # Python — uv dependencies in pyproject.toml
+  - package-ecosystem: 'uv'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    labels:
+      - 'dependencies'
+    # uv.lock is committed, so Dependabot maintains the lock as well as
+    # pyproject.toml. No groups: the dependency set is two packages
+    # (robosystems-client, httpx) and they are unrelated.
+    #
+    # Note this is a reference implementation customers read and copy, so its
+    # config is worth keeping exemplary rather than minimal.
+
   # GitHub Actions — pinned action versions
   - package-ecosystem: 'github-actions'
     directory: '/'
@@ -7,3 +22,22 @@ updates:
       interval: 'monthly'
     labels:
       - 'dependencies'
+    groups:
+      github-actions:
+        patterns:
+          - '*'
+        update-types:
+          - 'minor'
+          - 'patch'
+    ignore:
+      # Held across the fleet: the robosystems backend pins v8.3.2 and ignores
+      # majors because v9 flipped `prune-cache` to false and would grow its uv
+      # cache. This repo stays on v9.0.0 — pinned by SHA now — rather than
+      # being downgraded to match, which would be churn with a real behaviour
+      # change and no security gain: neither v9's nor v10's breaking change
+      # bites here. What the fleet shares is the rule, not the version number.
+      # Drop this entry when the backend takes a setup-uv major, and move in
+      # step with it.
+      - dependency-name: 'astral-sh/setup-uv'
+        update-types:
+          - 'version-update:semver-major'
