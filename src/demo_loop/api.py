@@ -87,10 +87,27 @@ def provision_graph(
         graph_id = _field(result, "graph_id")
         break
       if state == "failed":
-        raise SystemExit(f"Graph provisioning failed: {_field(result, 'error')}")
+        # `error` and `message` sit on the status payload itself, not inside
+        # `result` — reading `result.error` printed a bare "None" and sent a
+        # capacity failure to the logs as a mystery. The server-side text is
+        # deliberately sanitized ("Operation failed — reference op_..."), so
+        # name the operation id too: the real exception is in the API's
+        # worker log, and that id is the only way to find it.
+        detail = (
+          _field(data, "error")
+          or _field(data, "message")
+          or _field(result, "error")
+          or "no error detail returned"
+        )
+        raise SystemExit(
+          f"Graph provisioning failed ({operation_id}): {detail}\n"
+          f"  The full exception is in the API worker log for this operation."
+        )
 
   if not graph_id:
-    raise SystemExit("Timed out waiting for graph provisioning")
+    raise SystemExit(
+      f"Timed out waiting for graph provisioning ({operation_id}) after 15 minutes"
+    )
   print(f"  Graph ready: {graph_id}")
   return graph_id
 
