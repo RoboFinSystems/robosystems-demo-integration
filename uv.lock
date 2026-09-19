@@ -249,7 +249,7 @@ wheels = [
 
 [[package]]
 name = "robosystems-client"
-version = "1.13.1"
+version = "1.17.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "attrs" },
@@ -257,9 +257,9 @@ dependencies = [
     { name = "pydantic" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ab/61/c9e9f857d619025fec626b882b3b331bfb0587716b1e1929d153998a2831/robosystems_client-1.13.1.tar.gz", hash = "sha256:8c543bfc3dac2e1944df1920b9de10899e1017945a5febcdf027df432fb359b9", size = 561755, upload-time = "2026-08-31T21:35:36.509Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/b6/6a/52a2b9fcbb9239752554fe937a05f60053ac707deb85acfbfdc0ef95329f/robosystems_client-1.17.2.tar.gz", hash = "sha256:877827b78f2cb8a0777c67b6e5c2a3969d6e2bd5e3de494ee3978160396726fc", size = 584566, upload-time = "2026-09-19T05:23:40.475Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f8/d5/1485adbd1b1ec21425c05da92170f9c59ebccaa22f10942600b863ae7b53/robosystems_client-1.13.1-py3-none-any.whl", hash = "sha256:49f0aa4acff9d021170ed06ffa14296a1c82a830c6f2e57b8d037e018d8a6f5e", size = 1286958, upload-time = "2026-08-31T21:35:34.396Z" },
+    { url = "https://files.pythonhosted.org/packages/df/e8/d3269ae59465a71be675af4dd1914fc1f32970c4619888b1fd0908a5bc5a/robosystems_client-1.17.2-py3-none-any.whl", hash = "sha256:a2dec287a1b6021828ca196912754b51804763e9826bc45a2f41461e934a860d", size = 1332235, upload-time = "2026-09-19T05:23:38.617Z" },
 ]
 
 [[package]]
