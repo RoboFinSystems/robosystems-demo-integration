@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from robosystems_client.api.extensions_robo_ledger import (
+from robosystems_client.api.robo_ledger_ledger_events import (
   create_event_block as _create_event_block,
 )
 from robosystems_client.models import CreateEventBlockRequest

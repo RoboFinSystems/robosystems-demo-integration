@@ -9,7 +9,7 @@ authors = [
 ]
 license = {text = "MIT"}
 dependencies = [
-    "robosystems-client>=1,<2",
+    "robosystems-client>=2,<3",
     "httpx>=0.28",
 ]
 
