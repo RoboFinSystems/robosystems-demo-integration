@@ -19,10 +19,10 @@ from __future__ import annotations
 
 from datetime import date
 
-from robosystems_client.api.extensions_robo_ledger import (
+from robosystems_client.api.robo_ledger_information_blocks import (
   assert_metrics as _assert_metrics,
 )
-from robosystems_client.api.extensions_robo_ledger import (
+from robosystems_client.api.robo_ledger_taxonomy_mapping import (
   create_taxonomy_block as _create_taxonomy_block,
 )
 from robosystems_client.models import AssertMetricsRequest, CreateTaxonomyBlockRequest
