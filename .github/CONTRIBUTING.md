@@ -5,7 +5,7 @@ This template is the scaffold for building custom integrations against the [Robo
 ## Community
 
 - **[Discussions](https://github.com/orgs/RoboFinSystems/discussions)** - Questions, ideas, and general conversation
-- **[Wiki](https://github.com/RoboFinSystems/robosystems/wiki)** - Architecture docs and guides
+- **[Documentation](https://robosystems.ai/docs/technical)** - Architecture docs and guides
 
 ## Development Setup
 
