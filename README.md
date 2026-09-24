@@ -101,11 +101,7 @@ Secrets (API key, source credentials) belong in your runtime's secret store — 
 
 The [`robosystems-client`](https://pypi.org/project/robosystems-client/) Python SDK is how the emitters interface with the platform — typed request/response models and one generated function per operation (`robosystems_client.api.*`), regenerated from the live [OpenAPI spec](https://api.robosystems.ai/openapi.json). Brand-new operations occasionally land on the API before the SDK's next regeneration; `IntegrationClient.raw_operation` reaches those through the same authenticated client until the typed function exists.
 
-### What the pin promises
-
-`pyproject.toml` pins `robosystems-client>=1,<2`, and that range is safe because **this template defines the SDK's stable surface**. Every symbol the emitters import — `AuthenticatedClient`, `types.UNSET`, the emit operations (`create_file_upload`, `ingest_file`, `materialize`, `create_event_block`, `assert_metrics`, `create_taxonomy_block`) and their request models — is frozen for the life of `1.x`. Breaking any of it costs the SDK a major version.
-
-The rest of `robosystems_client.api.*` carries no such promise. It tracks the API surface and moves with it on minor releases, so operations you reach for beyond the emitters above — including anything through `raw_operation` — can be renamed or removed without a major. If you build on one and want it frozen, the way to get that is to add it to this template's emitters, not to narrow the pin.
+Which parts of the SDK stay stable across releases is covered in [Versioning and Compatibility](https://robosystems.ai/docs/technical/versioning-and-compatibility#the-two-tier-sdk-contract).
 
 ## License
 
