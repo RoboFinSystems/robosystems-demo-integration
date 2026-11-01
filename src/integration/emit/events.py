@@ -8,8 +8,10 @@ events.
 
 The idempotency convention: always set ``source`` (your registered
 source name) and a stable ``external_id`` from the source system.
-``(source, external_id)`` is unique on the platform, so re-sending an
-event is a no-op and retries are always safe.
+``(source, external_id)`` is unique on the platform, so a re-send never
+posts twice. The API answers 409, and ``emit_event`` returns
+``{"already_ingested": True, ...}`` instead of raising, so retries are safe
+and a re-run batch carries on.
 """
 
 from __future__ import annotations
@@ -23,6 +25,10 @@ from robosystems_client.models import CreateEventBlockRequest
 from robosystems_client.types import UNSET
 
 from integration.client import IntegrationClient
+
+# The API's words for a repeat of (source, external_id). Matched so that any
+# other 409 still raises.
+_ALREADY_INGESTED = b"Event already ingested"
 
 
 def emit_event(
@@ -43,6 +49,10 @@ def emit_event(
     to discover the expected shape without writing
   - ``apply_handlers`` — leave False to land in the inbox for operator
     approval (recommended for new integrations)
+
+  A repeat of ``(source, external_id)`` returns
+  ``{"already_ingested": True, "source": ..., "external_id": ...}`` rather than
+  the operation envelope.
   """
   payload = {"source": client.config.source_name, **payload}
   if not payload.get("external_id"):
@@ -56,6 +66,12 @@ def emit_event(
     body=CreateEventBlockRequest.from_dict(payload),
     idempotency_key=idempotency_key if idempotency_key is not None else UNSET,
   )
+  if int(response.status_code) == 409 and _ALREADY_INGESTED in response.content:
+    return {
+      "already_ingested": True,
+      "source": payload["source"],
+      "external_id": payload["external_id"],
+    }
   return client.unwrap(response)
 
 

@@ -24,7 +24,7 @@ The URL is not a credential — safe to paste in chat, a run summary, or a slide
 
 The loop's own `ROBOSYSTEMS_API_KEY` is unrelated to any of this: OAuth covers MCP clients only, while provisioning, loading and teardown are ordinary REST that takes `X-API-Key`. It stays.
 
-For a viewer who **can't** sign in as the demo account, `demo-up <episode> --connector-key` mints a graph-scoped key to send as an `X-API-Key` header (Claude's "Additional request headers" field, or a Cursor/VS Code `mcp.json`). Off by default, printed once, revoked on teardown, and never valid in a URL.
+For a viewer who **can't** sign in as the demo account, `uv run python -m demo_loop.main up <episode> --connector-key` mints a graph-scoped key to send as an `X-API-Key` header (Claude's "Additional request headers" field, or a Cursor/VS Code `mcp.json`). Off by default, printed once, revoked on teardown, and never valid in a URL.
 
 ---
 
@@ -50,7 +50,7 @@ Pick the lane that matches your data's nature (an integration can use more than 
 
 ## Quickstart
 
-1. Click **Use this template** and create your integration repo (typically private).
+1. Create your integration repo from [robosystems-integration-template](https://github.com/RoboFinSystems/robosystems-integration-template) with **Use this template** (typically private).
 2. Clone it, then:
 
 ```bash
@@ -83,7 +83,7 @@ The split is deliberate: **you own extract and transform** (they're specific to 
 
 ## Conventions that matter
 
-- **Idempotency**: lane-1 events carry `(source, external_id)` — re-sending the same event is a no-op, so retries are always safe. Operations also accept an `Idempotency-Key` header (the client sends one when you pass it).
+- **Idempotency**: lane-1 events carry `(source, external_id)`, which is unique on the platform, so a re-send never posts twice. The API answers 409 and `emit_event` returns `{"already_ingested": True, ...}` instead of raising, so retries are safe and a re-run batch carries on. Operations also accept an `Idempotency-Key` header (the client sends one when you pass it).
 - **Raw history is yours**: keep your raw pulls (e.g. daily JSON snapshots) in your own storage; send the platform the rolled-up series at your reporting cadence. Backfill is one loop over your history.
 - **One source name per integration**: your integration's registered source name is its identity stamp on everything it writes.
 
