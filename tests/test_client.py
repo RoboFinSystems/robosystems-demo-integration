@@ -9,6 +9,7 @@ import pytest
 
 from integration.client import IntegrationAPIError, IntegrationClient
 from integration.config import Config
+from integration.emit.events import emit_event, emit_events
 
 
 def _config() -> Config:
@@ -153,3 +154,46 @@ class TestMetricsEmitter:
     assert seen["body"]["observations"] == [
       {"qname": "rsx:GithubStars", "value": 1240.0}
     ]
+
+
+class TestEmitEvent:
+  _PAYLOAD = {
+    "event_type": "invoice_issued",
+    "event_category": "sales",
+    "occurred_at": "2026-07-30T00:00:00Z",
+    "external_id": "inv-1",
+  }
+  _REPEAT = {"detail": "Event already ingested for this source and external_id"}
+
+  def test_a_repeat_returns_already_ingested_instead_of_raising(self) -> None:
+    client = _client_with(lambda _request: httpx.Response(409, json=self._REPEAT))
+
+    assert emit_event(client, self._PAYLOAD) == {
+      "already_ingested": True,
+      "source": "testsource",
+      "external_id": "inv-1",
+    }
+
+  def test_any_other_409_still_raises(self) -> None:
+    client = _client_with(
+      lambda _request: httpx.Response(409, json={"detail": "Row is locked"})
+    )
+
+    with pytest.raises(IntegrationAPIError, match="Row is locked"):
+      emit_event(client, self._PAYLOAD)
+
+  def test_a_batch_carries_on_past_a_repeat(self) -> None:
+    seen = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+      seen.append(json.loads(request.content)["external_id"])
+      return httpx.Response(409, json=self._REPEAT)
+
+    client = _client_with(handler)
+    results = emit_events(
+      client,
+      [self._PAYLOAD, {**self._PAYLOAD, "external_id": "inv-2"}],
+    )
+
+    assert seen == ["inv-1", "inv-2"]
+    assert all(result["already_ingested"] for result in results)
